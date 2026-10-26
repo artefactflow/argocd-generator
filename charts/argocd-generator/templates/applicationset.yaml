@@ -1,0 +1,64 @@
+{{/*
+One ApplicationSet per entry in .Values.applicationSets. Everything taken from
+values is emitted verbatim, so the Argo CD Go templates (`{{ .name }}` and
+friends) that live in those values reach the controller untouched. Helm never
+renders a values file.
+*/}}
+{{- range $as := .Values.applicationSets }}
+{{- if ne $as.enabled false }}
+---
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: {{ required "each entry in applicationSets needs a name" $as.name }}
+  namespace: {{ $.Release.Namespace }}
+  labels:
+    {{- include "argocd-generator.labels" $ | nindent 4 }}
+    {{- with $as.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  {{- with $as.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  goTemplate: true
+  {{- with $as.goTemplateOptions }}
+  goTemplateOptions:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  generators:
+    - plugin:
+        configMapRef:
+          name: {{ include "argocd-generator.fullname" $ }}
+        input:
+          parameters:
+            environment: {{ required (printf "applicationSets entry %q needs an environment" $as.name) $as.environment | quote }}
+            {{- with $as.sbomName }}
+            sbomName: {{ . | quote }}
+            {{- end }}
+        requeueAfterSeconds: {{ $as.requeueAfterSeconds | default 120 }}
+  template:
+    metadata:
+      {{- toYaml $as.templateMetadata | nindent 6 }}
+    spec:
+      project: {{ $as.project | quote }}
+      destination:
+        {{- toYaml $as.destination | nindent 8 }}
+      {{- with $as.syncPolicy }}
+      syncPolicy:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with $as.templateSpec }}
+      {{- toYaml . | nindent 6 }}
+      {{- end }}
+  {{- with $as.templatePatch }}
+  templatePatch: |
+    {{- . | nindent 4 }}
+  {{- end }}
+  {{- with $as.strategy }}
+  strategy:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+{{- end }}
+{{- end }}

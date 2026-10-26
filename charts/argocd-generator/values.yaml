@@ -1,0 +1,264 @@
+# Default values for argocd-generator.
+#
+# Note on Go templates: everything under `applicationSets` is passed through to
+# Argo CD verbatim. Helm does not template values files, so `{{ .name }}` in
+# this file reaches the ApplicationSet controller as written, so no escaping
+# is needed, and the same is true for values files you write yourself.
+
+nameOverride: ""
+fullnameOverride: ""
+
+image:
+  repository: ghcr.io/artefactflow/argocd-generator
+  # Defaults to the chart's appVersion. Pin a release (for example 1.2.3, with
+  # no leading v) in production; `latest` gives you no control over when the
+  # plugin changes.
+  tag: ""
+  pullPolicy: IfNotPresent
+imagePullSecrets: []
+
+# The upstream ArtefactFlow API the plugin reads from.
+artefactflow:
+  apiUrl: https://api.artefactflow.app
+
+  # Service-account credentials. The plugin exchanges them for a short-lived
+  # access token and re-authenticates for as long as it runs, so it survives
+  # token expiry without an operator touching it.
+  #
+  # The service account needs the sbom:read and environment:read scopes, and
+  # team membership granting read access to the relevant groups.
+  #
+  # clientId is the account's own id, a UUID: an identifier, not a
+  # credential, so it is safe in plain values.
+  clientId: ""
+
+  # Set `existingSecret` instead of `clientSecret` unless the chart values
+  # themselves are already handled as a secret (SOPS, sealed-secrets, an
+  # external secret store). A secret in a plain values.yaml ends up in git and
+  # in `helm get values`.
+  clientSecret: ""
+  existingSecret: ""
+  # Key within existingSecret holding the client secret. Set
+  # existingSecretClientIdKey too if the same secret also carries the id;
+  # otherwise clientId above is used.
+  existingSecretKey: client-secret
+  existingSecretClientIdKey: ""
+
+plugin:
+  # Shared secret the ApplicationSet controller presents to this plugin;
+  # requests without it are rejected with 403. Independent of the upstream
+  # ArtefactFlow token, which the controller never sees.
+  token: ""
+  existingSecret: ""
+  existingSecretKey: token
+
+  # How the plugin ConfigMap references that secret. Argo CD resolves a bare
+  # `$name` against argocd-secret and `$secret:key` against the named secret.
+  # Leave empty to reference the secret this chart manages. If your Argo CD is
+  # too old for the `$secret:key` form, set this to
+  # `$plugin.argocd-generator.token`, add that key to argocd-secret yourself,
+  # and set plugin.existingSecret to argocd-secret.
+  tokenRef: ""
+
+  port: 4355
+  # Seconds the controller waits for a getparams response. Environments with
+  # many SBOMs need headroom, because every member SBOM is fetched per
+  # reconcile.
+  requestTimeout: 60
+  # Destination namespace for components that set no argocd_namespace and whose
+  # group is not usable as one. Unset (the default) makes that combination a
+  # hard error instead, which is deliberate: with CreateNamespace=true a guessed
+  # namespace would be created rather than rejected, so the deployment would
+  # succeed in a namespace nobody chose. Set this only if a catch-all namespace
+  # is genuinely what you want.
+  defaultNamespace: ""
+
+  # Permit an empty parameter set. Off by default: an empty result tells the
+  # controller every generated Application is gone and it prunes them all.
+  # Only turn this on if an empty environment genuinely means "delete
+  # everything".
+  allowEmpty: false
+
+  # Which CycloneDX component types become Applications. Empty uses the
+  # built-in default (application and container), which is already a filter:
+  # a `library` component is not a deployment. Set ["application", "container",
+  # "platform"] and so on to widen it, or leave it alone.
+  #
+  # Whatever this is set to, every component it excludes is logged by name.
+  # A component missing from the result is one Argo CD prunes, so the filter
+  # is never silent.
+  componentTypes: []
+
+  # The property by which one component names what it deploys. A Helm chart
+  # artefact carrying `deploys-image: pkg:docker/acme/checkout-service` is
+  # declaring that the chart and that image are one workload: the chart becomes
+  # the Application, the image folds into it, and the chart's
+  # image.repository/image.tag are derived from the image rather than being
+  # restated by hand on every chart.
+  #
+  # Empty uses the built-in default, `deploys-image`.
+  claimProperty: ""
+
+  # Render a claimed component as its own Application anyway. Off by default,
+  # because a chart and the image it deploys are one workload, and two
+  # Applications would fight over the same resources. Turn this on only if you
+  # genuinely deploy the chart and the image as separate roots.
+  disableFold: false
+
+  # Render components that carry no argocd_* property at all. Off by default:
+  # an environment's inventory legitimately includes npm packages, mobile apps
+  # and SDKs that are not Argo CD Applications under any definition, and
+  # inventing a destination for them deploys something nobody asked for. They
+  # are skipped and logged rather than dropped quietly.
+  #
+  # A component with *some* argocd_* properties but not enough is still an
+  # error, not a skip: that is a misconfiguration, and failing is what stops
+  # it from being pruned.
+  deployUnconfigured: false
+
+replicaCount: 1
+
+serviceAccount:
+  create: true
+  name: ""
+  annotations: {}
+
+service:
+  type: ClusterIP
+  port: 4355
+  annotations: {}
+
+resources:
+  requests:
+    cpu: 25m
+    memory: 32Mi
+  limits:
+    cpu: 250m
+    memory: 128Mi
+
+podAnnotations: {}
+podLabels: {}
+nodeSelector: {}
+tolerations: []
+affinity: {}
+topologySpreadConstraints: []
+
+podSecurityContext:
+  runAsNonRoot: true
+  seccompProfile:
+    type: RuntimeDefault
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop: ["ALL"]
+
+# Extra environment variables and volumes, for cases the values above do not
+# cover, such as a custom CA bundle for the ArtefactFlow endpoint.
+extraEnv: []
+extraVolumes: []
+extraVolumeMounts: []
+
+networkPolicy:
+  # The plugin hands out the environment's full application inventory to
+  # anyone who can reach it with the token, so ingress is restricted to the
+  # ApplicationSet controller.
+  enabled: true
+  # Selector matching your ApplicationSet controller pods. Verify this against
+  # your installation: an unmatched selector silently blocks every reconcile.
+  controllerSelector:
+    app.kubernetes.io/name: argocd-applicationset-controller
+  # Only needed when the plugin is installed outside the controller's
+  # namespace: a podSelector alone matches the release namespace only.
+  controllerNamespaceSelector: {}
+  # Egress to the ArtefactFlow API. Narrow to the API's address range where
+  # you can; an empty list allows egress on 443 to anywhere.
+  apiEgressCIDRs: []
+
+# ApplicationSets to create, one per environment (or per environment+SBOM).
+# Every field is passed to Argo CD as written; see deploy/applicationset.yaml
+# for the annotated original.
+applicationSets:
+  - name: artefactflow-environment
+    enabled: true
+    # Environment slug or id.
+    environment: production
+    # Optional: restrict this set to a single SBOM.
+    sbomName: ""
+    requeueAfterSeconds: 120
+    goTemplateOptions: ["missingkey=error"] # safe: the plugin always emits every key
+    annotations: {}
+    labels: {}
+    # Applied to each generated Application's metadata.
+    templateMetadata:
+      name: "sbom-{{ .name }}" # already RFC 1123-safe, with a stable hash suffix
+      annotations:
+        artefactflow.purl: "{{ .purl }}"
+        artefactflow.component: "{{ .rawName }}"
+        artefactflow.artefact-id: "{{ .artefact_id }}"
+    project: "{{ .argocd_project }}"
+    destination:
+      server: https://kubernetes.default.svc
+      namespace: "{{ .argocd_namespace }}"
+    syncPolicy:
+      # The environment's deployment set is the source of truth for what should
+      # be live, so prune is appropriate. It is safe because the plugin refuses
+      # to return an empty or partial set: a failed resolve errors the reconcile
+      # and Argo keeps the last known-good set.
+      automated:
+        prune: true
+        selfHeal: true
+      syncOptions:
+        - CreateNamespace=true
+    # The source block needs conditionals (chart vs path) and a loop (value
+    # files), which the structured template cannot express. templatePatch is
+    # rendered as a Go template and then parsed as YAML, so control flow is
+    # allowed here.
+    templatePatch: |
+      spec:
+        source:
+          repoURL: "{{ .argocd_repo_url }}"
+          targetRevision: "{{ .argocd_target_revision }}"
+          {{- if .argocd_chart }}
+          chart: "{{ .argocd_chart }}"
+          {{- else }}
+          path: "{{ .argocd_path }}"
+          {{- end }}
+          helm:
+            # Value files are applied in order and later files win, so
+            # operator-wide defaults belong first. To give every generated
+            # Application a common baseline without repeating it on every
+            # artefact in ArtefactFlow, drop the `if` below and list the
+            # baseline above the range:
+            #
+            #   valueFiles:
+            #     - common/defaults.yaml
+            #     ...then the range over argocd_value_files, unchanged
+            #
+            # (Written as prose deliberately: a Go action inside a YAML comment
+            # is still executed by the template engine, so a copy-pasteable
+            # snippet here would render into the comment.)
+            {{- if .argocd_value_files }}
+            valueFiles:
+              {{- range .argocd_value_files }}
+              - {{ . | quote }}
+              {{- end }}
+            {{- end }}
+            {{- if or .image_repository .argocd_helm_parameters }}
+            parameters:
+              {{- if .image_repository }}
+              # image_repository is only set for container (docker/oci)
+              # components; non-container components (an npm package, say) get
+              # no image parameters here: supply their image via values files
+              # instead.
+              - name: image.repository
+                value: {{ .image_repository | quote }}
+              - name: image.tag
+                value: {{ .image_tag | quote }}
+              {{- end }}
+              {{- /* Per-component extras from the argocd_helm_parameters property. Listed after the image parameters so a component can deliberately override them; add operator-wide parameters here as literal entries. */}}
+              {{- range .argocd_helm_parameters }}
+              - name: {{ .name | quote }}
+                value: {{ .value | quote }}
+              {{- end }}
+            {{- end }}

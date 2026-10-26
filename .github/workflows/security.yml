@@ -1,0 +1,230 @@
+name: Security
+
+# Looks for known vulnerabilities in the code and in the container image, on
+# every change and once a day, and checks that the published release has not
+# been tampered with.
+#
+# The daily run matters most. A vulnerability is usually published, or found
+# to be exploited, long after the code last changed, so a check that only runs
+# on a push would miss it. On the schedule the jobs look at the published
+# `latest` image, which is what users run, for every platform it is built for.
+# Only while no release exists do they fall back to building from source.
+#
+# The run fails when govulncheck finds a vulnerability reachable from this
+# code, when the image holds a vulnerability listed in CISA's Known Exploited
+# Vulnerabilities catalogue, or when the published release no longer matches
+# what the release workflow produced. A failed scheduled run notifies the
+# account that last changed the schedule below. That account's notifications
+# for this organisation are routed to security@artefactflow.com; keep it that
+# way when editing the cron line.
+#
+# GitHub disables scheduled workflows in a public repository after 60 days
+# without activity. Nothing fails when that happens, so it is checked by hand,
+# monthly.
+#
+# This workflow is kept identical in every ArtefactFlow integration
+# repository. Change it in all of them at once.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    # Daily, early morning UTC.
+    - cron: '41 4 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Scheduled and manual runs get their own group and are never cancelled: a
+# push landing during the daily run must not cancel the one check of the
+# published image. Only a newer push to the same pull request supersedes a
+# run.
+concurrency:
+  group: security-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  IMAGE: ghcr.io/${{ github.repository }}
+  PLATFORMS: linux/amd64 linux/arm64
+  # The scanners are pinned, Trivy by a checksum recorded here rather than
+  # one fetched from the same release, so a republished release cannot
+  # change what this gate runs. Dependabot does not update these; bump them
+  # deliberately, together with the same values in release.yml.
+  TRIVY_VERSION: 0.76.1
+  TRIVY_SHA256: c7cbe3137fb8a48a17574bede3dd6beb16742d1e9772929940fc90082c39d9c0
+  GOVULNCHECK_VERSION: v1.9.0
+
+jobs:
+  govulncheck:
+    name: Go vulnerabilities in the source
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      # Run in the Dockerfile's build image rather than with setup-go.
+      # go.mod names a minimum Go version, while the image is built with
+      # the newest patch release of that line. The published binary
+      # itself is checked in the image job.
+      - name: govulncheck
+        run: |
+          builder="$(awk 'toupper($1) == "FROM" && tolower($NF) == "build" { print $2; exit }' Dockerfile)"
+          if [ -z "$builder" ]; then
+            echo "::error::could not find the build stage (FROM ... AS build) in the Dockerfile"
+            exit 1
+          fi
+          docker run --rm -v "$PWD:/src" -w /src "$builder" go run "golang.org/x/vuln/cmd/govulncheck@${GOVULNCHECK_VERSION}" ./...
+
+  image:
+    name: Image vulnerabilities
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Install Trivy
+        run: |
+          curl -sSfL -o "$RUNNER_TEMP/trivy.tar.gz" "https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION}/trivy_${TRIVY_VERSION}_Linux-64bit.tar.gz"
+          echo "${TRIVY_SHA256}  $RUNNER_TEMP/trivy.tar.gz" | sha256sum -c -
+          mkdir -p "$RUNNER_TEMP/bin"
+          tar -xzf "$RUNNER_TEMP/trivy.tar.gz" -C "$RUNNER_TEMP/bin" trivy
+          echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
+
+      # A package can be private, and GHCR can throttle anonymous pulls.
+      # Either would otherwise look like "no image".
+      - name: Log in to GHCR
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Once a release exists, the published image is the only
+      # acceptable target: falling back to a fresh build would scan
+      # newer base layers than users run, and could pass while the
+      # shipped image fails.
+      - name: Choose the image to scan
+        id: target
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if [ "$GITHUB_EVENT_NAME" != schedule ] && [ "$GITHUB_EVENT_NAME" != workflow_dispatch ]; then
+            echo "published=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          release="$(gh release list --exclude-pre-releases --limit 1 --json tagName --jq '.[0].tagName // empty')"
+          if [ -z "$release" ]; then
+            echo "::notice::No release yet, so there is no published image. Scanning an image built from source instead."
+            echo "published=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if ! docker buildx imagetools inspect "${IMAGE}:latest" >/dev/null; then
+            echo "::error::release $release exists, but ${IMAGE}:latest cannot be read. The published image is what has to be checked, so this fails rather than scanning a rebuild."
+            exit 1
+          fi
+          echo "published=true" >> "$GITHUB_OUTPUT"
+
+      - uses: docker/setup-buildx-action@v4
+        if: steps.target.outputs.published == 'false'
+
+      - name: Build image from source
+        if: steps.target.outputs.published == 'false'
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          push: false
+          load: true
+          tags: security-scan:source
+
+      - name: Scan the image
+        env:
+          PUBLISHED: ${{ steps.target.outputs.published }}
+        run: |
+          if [ "$PUBLISHED" = true ]; then
+            for platform in $PLATFORMS; do
+              trivy image --quiet --platform "$platform" --scanners vuln --format json --output "trivy-${platform#linux/}.json" "${IMAGE}:latest"
+            done
+          else
+            trivy image --quiet --scanners vuln --format json --output trivy-source.json security-scan:source
+          fi
+
+      - name: Check against the Known Exploited Vulnerabilities catalogue
+        run: |
+          status=0
+          for report in trivy-*.json; do
+            echo "Checking $report"
+            .github/scripts/kev-check.sh "$report" || status=1
+          done
+          exit $status
+
+      # govulncheck on the binary users actually run, not on the source
+      # of main: a vulnerable standard library in the released build is
+      # found here even after main has moved on. It works on the
+      # stripped binary.
+      - name: govulncheck on the published binary
+        if: steps.target.outputs.published == 'true'
+        run: |
+          builder="$(awk 'toupper($1) == "FROM" && tolower($NF) == "build" { print $2; exit }' Dockerfile)"
+          docker pull -q --platform linux/amd64 "${IMAGE}:latest" >/dev/null
+          entrypoint="$(docker image inspect "${IMAGE}:latest" --format '{{index .Config.Entrypoint 0}}')"
+          container="$(docker create --platform linux/amd64 "${IMAGE}:latest")"
+          docker cp "${container}:${entrypoint}" "$RUNNER_TEMP/published-binary"
+          docker rm "$container" >/dev/null
+          docker run --rm -v "$RUNNER_TEMP:/w" "$builder" go run "golang.org/x/vuln/cmd/govulncheck@${GOVULNCHECK_VERSION}" -mode=binary /w/published-binary
+
+  integrity:
+    name: Release integrity
+    # Detects what the tag ruleset is meant to prevent: a published image
+    # or a moving major tag that the release workflow did not produce.
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
+      attestations: read
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Check the published release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          release="$(gh release list --exclude-pre-releases --limit 1 --json tagName --jq '.[0].tagName // empty')"
+          if [ -z "$release" ]; then
+            echo "No release yet; nothing to check."
+            exit 0
+          fi
+
+          # Every image the release workflow publishes carries a
+          # build provenance attestation from this repository. An
+          # image under `latest` without one was not pushed by it.
+          gh attestation verify "oci://${IMAGE}:latest" --repo "$GITHUB_REPOSITORY"
+
+          # An action's users follow the moving major tag, so it
+          # must point at the newest release of that major.
+          # Repositories without an action.yml have no such tag.
+          if [ -f action.yml ]; then
+            major="${release%%.*}"
+            git fetch --force --tags origin
+            if [ "$(git rev-parse "${major}^{commit}")" != "$(git rev-parse "${release}^{commit}")" ]; then
+              echo "::error::${major} points at $(git rev-parse --short "${major}^{commit}"), not at the newest release ${release} ($(git rev-parse --short "${release}^{commit}")). Treat this as a possible compromised release, as described in SECURITY.md."
+              exit 1
+            fi
+            echo "${major} points at ${release}."
+          fi

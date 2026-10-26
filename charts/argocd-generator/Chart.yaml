@@ -1,0 +1,22 @@
+apiVersion: v2
+name: argocd-generator
+description: ApplicationSet plugin generator that turns what ArtefactFlow reports as deployed to an environment into Argo CD Applications.
+type: application
+
+# version is the chart version; appVersion is the argocd-generator release it
+# defaults to deploying. Bump version on every chart change, appVersion only
+# when the default image moves.
+version: 0.1.0
+appVersion: "latest"
+
+home: https://github.com/artefactflow/argocd-generator
+sources:
+  - https://github.com/artefactflow/argocd-generator
+keywords:
+  - argocd
+  - applicationset
+  - gitops
+  - sbom
+  - artefactflow
+annotations:
+  artifacthub.io/category: integration-delivery

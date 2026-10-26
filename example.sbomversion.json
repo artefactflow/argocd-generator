@@ -1,0 +1,755 @@
+{
+  "bomFormat": "CycloneDX",
+  "bom_ref": "ebf67ef6-c895-4b2b-ad79-fc319cd455ea",
+  "components": [
+    {
+      "artefact_id": "0199830f-2660-740b-b394-21365f5a9e04",
+      "bom-ref": "667b333c-d106-4fb6-8a16-0bc2413dc30d",
+      "external_references": [
+        {
+          "comment": "OCI Helm chart",
+          "type": "distribution",
+          "url": "oci://registry.acme.example.com/charts/checkout-service"
+        },
+        {
+          "comment": "Chart source repository",
+          "type": "vcs",
+          "url": "https://git.acme.example.com/gitops/charts/checkout-service"
+        },
+        {
+          "comment": "Source tree for this branch",
+          "type": "vcs",
+          "url": "https://git.acme.example.com/gitops/charts/checkout-service/-/tree/main"
+        }
+      ],
+      "group": "com.acme.payments",
+      "licenses": [
+        {
+          "acknowledgement": "declared",
+          "expression": "Apache-2.0",
+          "name": "Apache-2.0",
+          "url": "https://www.apache.org/licenses/LICENSE-2.0"
+        }
+      ],
+      "name": "checkout-service-chart",
+      "properties": [
+        {
+          "name": "app-version",
+          "value": "1.5.0"
+        },
+        {
+          "name": "argocd_chart",
+          "value": "checkout-service"
+        },
+        {
+          "name": "argocd_namespace",
+          "value": "payments"
+        },
+        {
+          "name": "argocd_repo_url",
+          "value": "registry.acme.example.com/charts"
+        },
+        {
+          "name": "argocd_target_revision",
+          "value": "1.5.0"
+        },
+        {
+          "name": "argocd_value_files",
+          "value": "apps/checkout-service/values.yaml"
+        },
+        {
+          "name": "artefact-kind",
+          "value": "helm-chart"
+        },
+        {
+          "name": "chart-registry",
+          "value": "registry.acme.example.com/charts"
+        },
+        {
+          "name": "chart-version",
+          "value": "1.5.0"
+        },
+        {
+          "name": "deploys-image",
+          "value": "pkg:docker/acme/checkout-service"
+        },
+        {
+          "name": "target-namespace",
+          "value": "payments"
+        },
+        {
+          "name": "values-path",
+          "value": "apps/checkout-service/values.yaml"
+        }
+      ],
+      "purl": "pkg:helm/acme/checkout-service-chart",
+      "source": "https://git.acme.example.com/gitops/charts/checkout-service",
+      "type": "application",
+      "version": "1.5.0"
+    },
+    {
+      "artefact_id": "0199f9d4-a3b2-7653-9aa2-640fabb3b351",
+      "bom-ref": "691d0fec-68f8-49ec-9623-182cec9e6972",
+      "external_references": [
+        {
+          "comment": "Source repository",
+          "type": "vcs",
+          "url": "https://git.acme.example.com/payments/checkout-service"
+        },
+        {
+          "comment": "Payments team backlog",
+          "type": "issue-tracker",
+          "url": "https://jira.acme.example.com/browse/PAY"
+        },
+        {
+          "comment": "Service runbook",
+          "type": "documentation",
+          "url": "https://docs.acme.example.com/checkout-service"
+        },
+        {
+          "comment": "Source tree for this branch",
+          "type": "vcs",
+          "url": "https://git.acme.example.com/payments/checkout-service/-/tree/main"
+        }
+      ],
+      "group": "com.acme.payments",
+      "licenses": [
+        {
+          "acknowledgement": "declared",
+          "expression": "Apache-2.0",
+          "name": "Apache-2.0",
+          "url": "https://www.apache.org/licenses/LICENSE-2.0"
+        },
+        {
+          "acknowledgement": "concluded",
+          "expression": "Proprietary - All Rights Reserved",
+          "name": "Proprietary or Custom License",
+          "url": "https://acme.example.com/legal/eula"
+        }
+      ],
+      "name": "checkout-service",
+      "properties": [
+        {
+          "name": "argocd_namespace",
+          "value": "payments"
+        },
+        {
+          "name": "argocd_path",
+          "value": "apps/checkout-service"
+        },
+        {
+          "name": "argocd_repo_url",
+          "value": "https://git.acme.example.com/gitops/manifests"
+        },
+        {
+          "name": "branch",
+          "value": "main"
+        },
+        {
+          "name": "builder",
+          "value": "gitlab-ci"
+        },
+        {
+          "name": "cost-center",
+          "value": "PAY-1001"
+        },
+        {
+          "name": "criticality",
+          "value": "tier-1"
+        },
+        {
+          "name": "on-call-rotation",
+          "value": "payments-primary"
+        }
+      ],
+      "purl": "pkg:docker/acme/checkout-service",
+      "source": "https://git.acme.example.com/payments/checkout-service",
+      "type": "container",
+      "version": "1.5.0"
+    },
+    {
+      "artefact_id": "01993443-6f62-75c0-a29d-0e3632d103de",
+      "bom-ref": "6bb9e080-9da5-43b5-95aa-5eb83062379e",
+      "external_references": [
+        {
+          "comment": "OCI Helm chart",
+          "type": "distribution",
+          "url": "oci://registry.acme.example.com/charts/billing-worker"
+        },
+        {
+          "comment": "Chart source repository",
+          "type": "vcs",
+          "url": "https://git.acme.example.com/gitops/charts/billing-worker"
+        },
+        {
+          "comment": "Source tree for this branch",
+          "type": "vcs",
+          "url": "https://git.acme.example.com/gitops/charts/billing-worker/-/tree/main"
+        }
+      ],
+      "group": "com.acme.payments",
+      "licenses": [
+        {
+          "acknowledgement": "declared",
+          "expression": "Apache-2.0",
+          "name": "Apache-2.0",
+          "url": "https://www.apache.org/licenses/LICENSE-2.0"
+        }
+      ],
+      "name": "billing-worker-chart",
+      "properties": [
+        {
+          "name": "app-version",
+          "value": "0.9.1"
+        },
+        {
+          "name": "argocd_chart",
+          "value": "billing-worker"
+        },
+        {
+          "name": "argocd_namespace",
+          "value": "payments"
+        },
+        {
+          "name": "argocd_repo_url",
+          "value": "registry.acme.example.com/charts"
+        },
+        {
+          "name": "argocd_target_revision",
+          "value": "0.9.1"
+        },
+        {
+          "name": "argocd_value_files",
+          "value": "apps/billing-worker/values.yaml"
+        },
+        {
+          "name": "artefact-kind",
+          "value": "helm-chart"
+        },
+        {
+          "name": "chart-registry",
+          "value": "registry.acme.example.com/charts"
+        },
+        {
+          "name": "chart-version",
+          "value": "0.9.1"
+        },
+        {
+          "name": "deploys-image",
+          "value": "pkg:docker/acme/billing-worker"
+        },
+        {
+          "name": "target-namespace",
+          "value": "payments"
+        },
+        {
+          "name": "values-path",
+          "value": "apps/billing-worker/values.yaml"
+        }
+      ],
+      "purl": "pkg:helm/acme/billing-worker-chart",
+      "source": "https://git.acme.example.com/gitops/charts/billing-worker",
+      "type": "application",
+      "version": "0.9.1"
+    },
+    {
+      "artefact_id": "0199ba7a-561c-761f-9637-51a709ab7b81",
+      "bom-ref": "67908d28-aae2-4fa3-bdb9-2941cdadf930",
+      "external_references": [
+        {
+          "comment": "Source repository",
+          "type": "vcs",
+          "url": "https://git.acme.example.com/payments/billing-worker"
+        },
+        {
+          "comment": "Source tree for this branch",
+          "type": "vcs",
+          "url": "https://git.acme.example.com/payments/billing-worker/-/tree/main"
+        }
+      ],
+      "group": "com.acme.payments",
+      "licenses": [
+        {
+          "acknowledgement": "declared",
+          "expression": "Apache-2.0",
+          "name": "Apache-2.0",
+          "url": "https://www.apache.org/licenses/LICENSE-2.0"
+        }
+      ],
+      "name": "billing-worker",
+      "properties": [
+        {
+          "name": "argocd_namespace",
+          "value": "payments"
+        },
+        {
+          "name": "argocd_path",
+          "value": "apps/billing-worker"
+        },
+        {
+          "name": "argocd_repo_url",
+          "value": "https://git.acme.example.com/gitops/manifests"
+        },
+        {
+          "name": "branch",
+          "value": "main"
+        },
+        {
+          "name": "builder",
+          "value": "gitlab-ci"
+        },
+        {
+          "name": "owner-team",
+          "value": "Payments Team"
+        },
+        {
+          "name": "primary-language",
+          "value": "Go"
+        }
+      ],
+      "purl": "pkg:docker/acme/billing-worker",
+      "source": "https://git.acme.example.com/payments/billing-worker",
+      "type": "container",
+      "version": "0.9.1"
+    },
+    {
+      "artefact_id": "01996579-6d95-7523-8e70-1dd6e6dd351a",
+      "bom-ref": "b4c9a088-2e13-419e-bb58-864b8f8b3b26",
+      "external_references": [
+        {
+          "comment": "OCI Helm chart",
+          "type": "distribution",
+          "url": "oci://registry.acme.example.com/charts/notification-gateway"
+        },
+        {
+          "comment": "Chart source repository",
+          "type": "vcs",
+          "url": "https://git.acme.example.com/gitops/charts/notification-gateway"
+        },
+        {
+          "comment": "Source tree for this branch",
+          "type": "vcs",
+          "url": "https://git.acme.example.com/gitops/charts/notification-gateway/-/tree/release/2.2"
+        }
+      ],
+      "group": "com.acme.messaging",
+      "licenses": [
+        {
+          "acknowledgement": "declared",
+          "expression": "MIT",
+          "name": "MIT",
+          "url": "https://opensource.org/license/mit"
+        }
+      ],
+      "name": "notification-gateway-chart",
+      "properties": [
+        {
+          "name": "app-version",
+          "value": "2.2.0-rc1"
+        },
+        {
+          "name": "argocd_chart",
+          "value": "notification-gateway"
+        },
+        {
+          "name": "argocd_helm_parameters",
+          "value": "ingress.enabled=true,ingress.className=contour"
+        },
+        {
+          "name": "argocd_namespace",
+          "value": "messaging"
+        },
+        {
+          "name": "argocd_repo_url",
+          "value": "registry.acme.example.com/charts"
+        },
+        {
+          "name": "argocd_target_revision",
+          "value": "2.2.0-rc1"
+        },
+        {
+          "name": "argocd_value_files",
+          "value": "apps/notification-gateway/values.yaml"
+        },
+        {
+          "name": "artefact-kind",
+          "value": "helm-chart"
+        },
+        {
+          "name": "chart-registry",
+          "value": "registry.acme.example.com/charts"
+        },
+        {
+          "name": "chart-version",
+          "value": "2.2.0-rc1"
+        },
+        {
+          "name": "deploys-image",
+          "value": "pkg:docker/acme/notification-gateway"
+        },
+        {
+          "name": "target-namespace",
+          "value": "messaging"
+        },
+        {
+          "name": "values-path",
+          "value": "apps/notification-gateway/values.yaml"
+        }
+      ],
+      "purl": "pkg:helm/acme/notification-gateway-chart",
+      "source": "https://git.acme.example.com/gitops/charts/notification-gateway",
+      "type": "application",
+      "version": "2.2.0-rc1"
+    },
+    {
+      "artefact_id": "0199f940-f84a-7336-b8c2-79fd7898b717",
+      "bom-ref": "a52079f2-7421-4a98-9fe9-263b0146668d",
+      "external_references": [
+        {
+          "comment": "Source repository",
+          "type": "vcs",
+          "url": "https://git.acme.example.com/platform/notification-gateway"
+        },
+        {
+          "comment": "Source tree for this branch",
+          "type": "vcs",
+          "url": "https://git.acme.example.com/platform/notification-gateway/-/tree/release/2.2"
+        }
+      ],
+      "group": "com.acme.messaging",
+      "licenses": [
+        {
+          "acknowledgement": "declared",
+          "expression": "MIT",
+          "name": "MIT",
+          "url": "https://opensource.org/license/mit"
+        }
+      ],
+      "name": "notification-gateway",
+      "properties": [
+        {
+          "name": "argocd_namespace",
+          "value": "messaging"
+        },
+        {
+          "name": "argocd_path",
+          "value": "apps/notification-gateway"
+        },
+        {
+          "name": "argocd_repo_url",
+          "value": "https://git.acme.example.com/gitops/manifests"
+        },
+        {
+          "name": "branch",
+          "value": "release/2.2"
+        },
+        {
+          "name": "builder",
+          "value": "gitlab-ci"
+        },
+        {
+          "name": "owner-team",
+          "value": "Platform Team"
+        },
+        {
+          "name": "primary-language",
+          "value": "Rust"
+        }
+      ],
+      "purl": "pkg:docker/acme/notification-gateway",
+      "source": "https://git.acme.example.com/platform/notification-gateway",
+      "type": "container",
+      "version": "2.2.0-rc1"
+    },
+    {
+      "artefact_id": "0199d10e-f86c-71e1-996d-e81da2c32a0b",
+      "bom-ref": "e63ed137-6d0f-4480-a2e5-6b2753acd362",
+      "external_references": [
+        {
+          "comment": "OCI Helm chart",
+          "type": "distribution",
+          "url": "oci://registry.acme.example.com/charts/analytics-pipeline"
+        },
+        {
+          "comment": "Chart source repository",
+          "type": "vcs",
+          "url": "https://git.acme.example.com/gitops/charts/analytics-pipeline"
+        },
+        {
+          "comment": "Source tree for this branch",
+          "type": "vcs",
+          "url": "https://git.acme.example.com/gitops/charts/analytics-pipeline/-/tree/main"
+        }
+      ],
+      "group": "com.acme.data",
+      "licenses": [
+        {
+          "acknowledgement": "declared",
+          "expression": "Apache-2.0",
+          "name": "Apache-2.0",
+          "url": "https://www.apache.org/licenses/LICENSE-2.0"
+        }
+      ],
+      "name": "analytics-pipeline-chart",
+      "properties": [
+        {
+          "name": "app-version",
+          "value": "4.7.0"
+        },
+        {
+          "name": "argocd_chart",
+          "value": "analytics-pipeline"
+        },
+        {
+          "name": "argocd_helm_parameters",
+          "value": "replicaCount=3,resources.limits.cpu=2,resources.limits.memory=4Gi"
+        },
+        {
+          "name": "argocd_namespace",
+          "value": "data"
+        },
+        {
+          "name": "argocd_repo_url",
+          "value": "registry.acme.example.com/charts"
+        },
+        {
+          "name": "argocd_target_revision",
+          "value": "4.7.0"
+        },
+        {
+          "name": "argocd_value_files",
+          "value": "apps/analytics-pipeline/values.yaml"
+        },
+        {
+          "name": "artefact-kind",
+          "value": "helm-chart"
+        },
+        {
+          "name": "chart-registry",
+          "value": "registry.acme.example.com/charts"
+        },
+        {
+          "name": "chart-version",
+          "value": "4.7.0"
+        },
+        {
+          "name": "deploys-image",
+          "value": "pkg:docker/acme/analytics-pipeline"
+        },
+        {
+          "name": "target-namespace",
+          "value": "data"
+        },
+        {
+          "name": "values-path",
+          "value": "apps/analytics-pipeline/values.yaml"
+        }
+      ],
+      "purl": "pkg:helm/acme/analytics-pipeline-chart",
+      "source": "https://git.acme.example.com/gitops/charts/analytics-pipeline",
+      "type": "application",
+      "version": "4.7.0"
+    },
+    {
+      "artefact_id": "0199f837-72aa-7838-b312-a220dbf6b577",
+      "bom-ref": "18b8108c-53fd-4eb2-a2e2-a856ac0a2df6",
+      "external_references": [
+        {
+          "comment": "Source repository",
+          "type": "vcs",
+          "url": "https://git.acme.example.com/data/analytics-pipeline"
+        },
+        {
+          "comment": "Pipeline documentation",
+          "type": "documentation",
+          "url": "https://docs.acme.example.com/analytics-pipeline"
+        },
+        {
+          "comment": "Source tree for this branch",
+          "type": "vcs",
+          "url": "https://git.acme.example.com/data/analytics-pipeline/-/tree/main"
+        }
+      ],
+      "group": "com.acme.data",
+      "licenses": [
+        {
+          "acknowledgement": "declared",
+          "expression": "Apache-2.0",
+          "name": "Apache-2.0",
+          "url": "https://www.apache.org/licenses/LICENSE-2.0"
+        }
+      ],
+      "name": "analytics-pipeline",
+      "properties": [
+        {
+          "name": "argocd_namespace",
+          "value": "data"
+        },
+        {
+          "name": "argocd_path",
+          "value": "apps/analytics-pipeline"
+        },
+        {
+          "name": "argocd_repo_url",
+          "value": "https://git.acme.example.com/gitops/manifests"
+        },
+        {
+          "name": "branch",
+          "value": "main"
+        },
+        {
+          "name": "builder",
+          "value": "gitlab-ci"
+        },
+        {
+          "name": "cost-center",
+          "value": "DATA-2002"
+        },
+        {
+          "name": "criticality",
+          "value": "tier-1"
+        },
+        {
+          "name": "data-classification",
+          "value": "internal"
+        }
+      ],
+      "purl": "pkg:docker/acme/analytics-pipeline",
+      "source": "https://git.acme.example.com/data/analytics-pipeline",
+      "type": "container",
+      "version": "4.7.0"
+    }
+  ],
+  "compositions": [
+    {
+      "aggregate": "complete",
+      "assemblies": [
+        "667b333c-d106-4fb6-8a16-0bc2413dc30d",
+        "691d0fec-68f8-49ec-9623-182cec9e6972",
+        "6bb9e080-9da5-43b5-95aa-5eb83062379e",
+        "67908d28-aae2-4fa3-bdb9-2941cdadf930",
+        "b4c9a088-2e13-419e-bb58-864b8f8b3b26",
+        "a52079f2-7421-4a98-9fe9-263b0146668d",
+        "e63ed137-6d0f-4480-a2e5-6b2753acd362",
+        "18b8108c-53fd-4eb2-a2e2-a856ac0a2df6"
+      ]
+    }
+  ],
+  "created_at": "2026-07-21T12:49:46.301Z",
+  "created_by": "019980ef-6b6b-7954-817c-851e5b1e5962",
+  "created_by_email": "admin@acme.example.com",
+  "deployed_envs": [
+    "0199149d-ec38-76c3-87d5-d2988b09b3c8"
+  ],
+  "external_references": [
+    {
+      "comment": "SBOM release notes",
+      "type": "release-notes",
+      "url": "https://docs.acme.example.com/platform/k8s-sbom/1.1.0"
+    },
+    {
+      "comment": "SBOM signing public keys (JWKS) for offline signature verification",
+      "type": "distribution",
+      "url": "https://keys.artefactflow.app/v1/public/orgs/nb2hi4dthixs6zdpn5xw6ztfnztws33o/signing-keys/jwks.json"
+    }
+  ],
+  "id": "01999e58-8d99-7d75-85ae-b50cce72d87b",
+  "metadata": {
+    "component": {
+      "description": "Kubernetes deployment bill of materials: the Helm charts and the container images they deploy to the Acme clusters. Consumed by the Argo CD manifest generator.",
+      "group": "platform",
+      "name": "acme-k8s-infra-bom",
+      "type": "application",
+      "version": "1.1.0"
+    },
+    "supplier": {
+      "name": "Acme Inc Platform Engineering"
+    },
+    "timestamp": "2026-07-21T12:49:46.301Z"
+  },
+  "note": "Adds the analytics-pipeline chart and pins checkout-service to 1.4.2.",
+  "properties": [
+    {
+      "name": "compliance-scope",
+      "value": "SOC2"
+    },
+    {
+      "name": "deployment-target",
+      "value": "kubernetes"
+    },
+    {
+      "name": "gitops-tool",
+      "value": "argo-cd"
+    },
+    {
+      "name": "chart-registry",
+      "value": "registry.acme.example.com/charts"
+    }
+  ],
+  "release_status": "released",
+  "serialNumber": "urn:uuid:cc5cd00c-af14-4e4c-9021-c59573167edb",
+  "services": [
+    {
+      "authenticated": true,
+      "bom_ref": "f3839585-84ba-4aa4-b410-72b168e3be70",
+      "description": "Public payment gateway service fronting the checkout flow.",
+      "endpoints": [
+        "https://api.acme.example.com/pay"
+      ],
+      "external_references": [
+        {
+          "comment": "Gateway runbook",
+          "type": "documentation",
+          "url": "https://docs.acme.example.com/payment-gateway"
+        }
+      ],
+      "group": "com.acme.platform",
+      "name": "payment-gateway",
+      "properties": [
+        {
+          "name": "owner-team",
+          "value": "Payments Team"
+        }
+      ],
+      "service_id": "019981d5-4968-722d-85de-88a47cf118c6",
+      "trust_zone": "public-dmz",
+      "version": "2.4.0",
+      "x_trust_boundary": true
+    },
+    {
+      "authenticated": true,
+      "bom_ref": "d9ccb0b4-556b-48c6-ae12-083d81a0cd89",
+      "description": "Authentication and identity provider for Acme services.",
+      "endpoints": [
+        "https://api.acme.example.com/auth"
+      ],
+      "group": "com.acme.platform",
+      "name": "identity-service",
+      "properties": [
+        {
+          "name": "owner-team",
+          "value": "Platform Team"
+        }
+      ],
+      "service_id": "0199bb81-3c41-7dc4-86e2-953ae2fd4213",
+      "trust_zone": "restricted",
+      "version": "3.1.0",
+      "x_trust_boundary": true
+    }
+  ],
+  "signature": {
+    "algorithm": "ed25519",
+    "key_backend": "managed",
+    "key_id": "0199de8f-36fb-7ed1-8b5a-9218ac2392e2-sbom-signing:v1",
+    "key_version": 1,
+    "payload_type": "application/vnd.in-toto+json",
+    "predicate_type": "https://cyclonedx.org/bom",
+    "signed_at": "2026-07-21T12:49:56.124Z",
+    "signed_by": "019980ef-6b6b-7954-817c-851e5b1e5962",
+    "signed_by_email": "admin@acme.example.com",
+    "subject_digest": "193ade349b957d16d23281a000c010f6eac0c76e06f67269f5183a6515c93d6f"
+  },
+  "specVersion": "1.7",
+  "updated_at": "2026-07-21T12:49:56.124Z",
+  "version": "1.1.0"
+}

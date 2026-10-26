@@ -1,0 +1,136 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "argocd-generator.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "argocd-generator.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "argocd-generator.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      annotations:
+        # Roll the pods when a token or the API URL changes; neither is re-read
+        # at runtime.
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+        checksum/secrets: {{ include (print $.Template.BasePath "/secrets.yaml") . | sha256sum }}
+        {{- with .Values.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      labels:
+        {{- include "argocd-generator.selectorLabels" . | nindent 8 }}
+        {{- with .Values.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      serviceAccountName: {{ include "argocd-generator.serviceAccountName" . }}
+      automountServiceAccountToken: false
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.podSecurityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: argocd-generator
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          args:
+            - serve
+            - --addr
+            - ":{{ .Values.plugin.port }}"
+            {{- if .Values.plugin.allowEmpty }}
+            - --allow-empty
+            {{- end }}
+            {{- with .Values.plugin.defaultNamespace }}
+            - --default-namespace
+            - {{ . | quote }}
+            {{- end }}
+            {{- with .Values.plugin.componentTypes }}
+            - --component-types
+            - {{ join "," . | quote }}
+            {{- end }}
+            {{- with .Values.plugin.claimProperty }}
+            - --claim-property
+            - {{ . | quote }}
+            {{- end }}
+            {{- if .Values.plugin.disableFold }}
+            - --no-fold
+            {{- end }}
+            {{- if .Values.plugin.deployUnconfigured }}
+            - --deploy-unconfigured
+            {{- end }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.plugin.port }}
+              protocol: TCP
+          env:
+            - name: ARTEFACTFLOW_API_URL
+              value: {{ .Values.artefactflow.apiUrl | quote }}
+            - name: ARTEFACTFLOW_CLIENT_ID
+              {{- if .Values.artefactflow.existingSecretClientIdKey }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "argocd-generator.upstreamSecretName" . }}
+                  key: {{ .Values.artefactflow.existingSecretClientIdKey }}
+              {{- else }}
+              value: {{ .Values.artefactflow.clientId | quote }}
+              {{- end }}
+            - name: ARTEFACTFLOW_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "argocd-generator.upstreamSecretName" . }}
+                  key: {{ include "argocd-generator.upstreamSecretKey" . }}
+            - name: ARGOCD_PLUGIN_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "argocd-generator.pluginSecretName" . }}
+                  key: {{ include "argocd-generator.pluginSecretKey" . }}
+            {{- with .Values.extraEnv }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+          {{- with .Values.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.securityContext }}
+          securityContext:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.extraVolumeMounts }}
+          volumeMounts:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+      {{- with .Values.extraVolumes }}
+      volumes:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.topologySpreadConstraints }}
+      topologySpreadConstraints:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

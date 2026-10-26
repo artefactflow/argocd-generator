@@ -1,0 +1,25 @@
+version: 2
+updates:
+  # The workflows pin third-party actions by major tag; this keeps those tags current and picks up their security fixes. The Trivy and govulncheck pins in the workflows are not covered: bump them deliberately.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: ci
+
+  # The module has no external dependencies today, so this mostly tracks the Go toolchain version in go.mod.
+  - package-ecosystem: gomod
+    directory: /
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: deps
+
+  # The base images in the Dockerfile: a stale golang or distroless image is the most likely source of a CVE in the published image.
+  - package-ecosystem: docker
+    directory: /
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: deps

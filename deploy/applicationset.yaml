@@ -1,0 +1,85 @@
+# ApplicationSet driven by the argocd-generator plugin.
+#
+# The plugin returns one parameter object per component that ArtefactFlow reports as live in the environment. Each object is rendered into one Argo CD Application. The SBOM supplies the "what / which version"; the argocd_* keys (set as properties on the artefact/version in ArtefactFlow) supply the "how": repo, path or chart, and values files.
+#
+# The source block is built in templatePatch rather than template because it needs conditionals (chart vs path) and a loop (value files). templatePatch is a string that is rendered as a Go template and then parsed as YAML, so control flow is allowed there; the structured template only templates leaf values.
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: artefactflow-environment
+  namespace: argocd
+spec:
+  goTemplate: true
+  goTemplateOptions: ["missingkey=error"]  # safe: the plugin always emits every key
+  generators:
+    - plugin:
+        configMapRef:
+          name: argocd-generator-plugin
+        input:
+          parameters:
+            environment: production   # environment slug or id
+            # sbomName: acme-platform-bom   # optional: restrict to a single SBOM
+        requeueAfterSeconds: 120
+  template:
+    metadata:
+      name: "sbom-{{ .name }}"        # already RFC 1123-safe, with a stable hash suffix
+      annotations:
+        artefactflow.purl: "{{ .purl }}"
+        artefactflow.component: "{{ .rawName }}"
+        artefactflow.artefact-id: "{{ .artefact_id }}"
+    spec:
+      project: "{{ .argocd_project }}"
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: "{{ .argocd_namespace }}"
+      syncPolicy:
+        # The environment's deployment set is the source of truth for what should be live, so prune is appropriate here. It is safe because the plugin refuses to return an empty or partial set (see README): a failed resolve errors the reconcile and Argo keeps the last known-good set.
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true
+  templatePatch: |
+    spec:
+      source:
+        repoURL: "{{ .argocd_repo_url }}"
+        targetRevision: "{{ .argocd_target_revision }}"
+        {{- if .argocd_chart }}
+        chart: "{{ .argocd_chart }}"
+        {{- else }}
+        path: "{{ .argocd_path }}"
+        {{- end }}
+        helm:
+          # Value files are applied in order and later files win, so operator-wide
+          # defaults belong first. To give every generated Application a common
+          # baseline without repeating it on every artefact in ArtefactFlow, drop
+          # the `if` below and list the baseline above the range:
+          #
+          #   valueFiles:
+          #     - common/defaults.yaml
+          #     ...then the range over argocd_value_files, unchanged
+          #
+          # (Written as prose deliberately: a Go action inside a YAML comment is
+          # still executed by the template engine, so a copy-pasteable snippet
+          # here would render into the comment.)
+          {{- if .argocd_value_files }}
+          valueFiles:
+            {{- range .argocd_value_files }}
+            - {{ . | quote }}
+            {{- end }}
+          {{- end }}
+          {{- if or .image_repository .argocd_helm_parameters }}
+          parameters:
+            {{- if .image_repository }}
+            # image_repository is only set for container (docker/oci) components; non-container components (for example an npm package) get no image parameters here: supply their image via values files instead.
+            - name: image.repository
+              value: {{ .image_repository | quote }}
+            - name: image.tag
+              value: {{ .image_tag | quote }}
+            {{- end }}
+            {{- /* Per-component extras from the argocd_helm_parameters property. Listed after the image parameters so a component can deliberately override them; add operator-wide parameters here as literal entries. */}}
+            {{- range .argocd_helm_parameters }}
+            - name: {{ .name | quote }}
+              value: {{ .value | quote }}
+            {{- end }}
+          {{- end }}

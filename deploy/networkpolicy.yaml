@@ -1,0 +1,36 @@
+# Lock the plugin down: it hands out the environment's application inventory to anyone who can reach it with the plugin token, so restrict ingress to the ApplicationSet controller only, and allow egress for DNS and the ArtefactFlow API.
+#
+# Adjust the podSelector labels to match your Argo CD installation.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: argocd-generator
+  namespace: argocd
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: argocd-generator
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: argocd-applicationset-controller
+      ports:
+        - protocol: TCP
+          port: 4355
+  egress:
+    # DNS
+    - to:
+        - namespaceSelector: {}
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    # ArtefactFlow API (HTTPS). Narrow this to the API's address range where possible.
+    - ports:
+        - protocol: TCP
+          port: 443

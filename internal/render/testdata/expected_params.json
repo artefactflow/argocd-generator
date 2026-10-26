@@ -1,0 +1,108 @@
+[
+  {
+    "argocd_chart": "analytics-pipeline",
+    "argocd_helm_parameters": [
+      {
+        "name": "replicaCount",
+        "value": "3"
+      },
+      {
+        "name": "resources.limits.cpu",
+        "value": "2"
+      },
+      {
+        "name": "resources.limits.memory",
+        "value": "4Gi"
+      }
+    ],
+    "argocd_namespace": "data",
+    "argocd_path": "",
+    "argocd_project": "default",
+    "argocd_repo_url": "registry.acme.example.com/charts",
+    "argocd_target_revision": "4.7.0",
+    "argocd_value_files": [
+      "apps/analytics-pipeline/values.yaml"
+    ],
+    "artefact_id": "0199d10e-f86c-71e1-996d-e81da2c32a0b",
+    "group": "com.acme.data",
+    "image_repository": "acme/analytics-pipeline",
+    "image_tag": "4.7.0",
+    "name": "analytics-pipeline-chart-902d938d",
+    "purl": "pkg:helm/acme/analytics-pipeline-chart",
+    "purl_type": "helm",
+    "rawName": "analytics-pipeline-chart",
+    "source": "https://git.acme.example.com/gitops/charts/analytics-pipeline"
+  },
+  {
+    "argocd_chart": "billing-worker",
+    "argocd_helm_parameters": [],
+    "argocd_namespace": "payments",
+    "argocd_path": "",
+    "argocd_project": "default",
+    "argocd_repo_url": "registry.acme.example.com/charts",
+    "argocd_target_revision": "0.9.1",
+    "argocd_value_files": [
+      "apps/billing-worker/values.yaml"
+    ],
+    "artefact_id": "01993443-6f62-75c0-a29d-0e3632d103de",
+    "group": "com.acme.payments",
+    "image_repository": "acme/billing-worker",
+    "image_tag": "0.9.1",
+    "name": "billing-worker-chart-dfbb1e97",
+    "purl": "pkg:helm/acme/billing-worker-chart",
+    "purl_type": "helm",
+    "rawName": "billing-worker-chart",
+    "source": "https://git.acme.example.com/gitops/charts/billing-worker"
+  },
+  {
+    "argocd_chart": "checkout-service",
+    "argocd_helm_parameters": [],
+    "argocd_namespace": "payments",
+    "argocd_path": "",
+    "argocd_project": "default",
+    "argocd_repo_url": "registry.acme.example.com/charts",
+    "argocd_target_revision": "1.5.0",
+    "argocd_value_files": [
+      "apps/checkout-service/values.yaml"
+    ],
+    "artefact_id": "0199830f-2660-740b-b394-21365f5a9e04",
+    "group": "com.acme.payments",
+    "image_repository": "acme/checkout-service",
+    "image_tag": "1.5.0",
+    "name": "checkout-service-chart-b98713cb",
+    "purl": "pkg:helm/acme/checkout-service-chart",
+    "purl_type": "helm",
+    "rawName": "checkout-service-chart",
+    "source": "https://git.acme.example.com/gitops/charts/checkout-service"
+  },
+  {
+    "argocd_chart": "notification-gateway",
+    "argocd_helm_parameters": [
+      {
+        "name": "ingress.enabled",
+        "value": "true"
+      },
+      {
+        "name": "ingress.className",
+        "value": "contour"
+      }
+    ],
+    "argocd_namespace": "messaging",
+    "argocd_path": "",
+    "argocd_project": "default",
+    "argocd_repo_url": "registry.acme.example.com/charts",
+    "argocd_target_revision": "2.2.0-rc1",
+    "argocd_value_files": [
+      "apps/notification-gateway/values.yaml"
+    ],
+    "artefact_id": "01996579-6d95-7523-8e70-1dd6e6dd351a",
+    "group": "com.acme.messaging",
+    "image_repository": "acme/notification-gateway",
+    "image_tag": "2.2.0-rc1",
+    "name": "notification-gateway-chart-911dd236",
+    "purl": "pkg:helm/acme/notification-gateway-chart",
+    "purl_type": "helm",
+    "rawName": "notification-gateway-chart",
+    "source": "https://git.acme.example.com/gitops/charts/notification-gateway"
+  }
+]

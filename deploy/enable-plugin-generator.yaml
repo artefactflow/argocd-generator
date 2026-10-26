@@ -1,0 +1,12 @@
+# ApplicationSet plugin generators are disabled by default. Enable them, then restart the controller:
+#
+#   kubectl rollout restart deploy/argocd-applicationset-controller -n argocd
+#
+# This is a patch to the existing argocd-cmd-params-cm ConfigMap.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: argocd-cmd-params-cm
+  namespace: argocd
+data:
+  applicationsetcontroller.enable.plugin: "true"

@@ -1,0 +1,121 @@
+# Plugin ConfigMap, Secrets, Deployment and Service for the argocd-generator ApplicationSet plugin generator.
+#
+# Two independent credentials are in play:
+#   - plugin token        : the ApplicationSet controller authenticates to this plugin
+#   - service account     : this plugin authenticates to the ArtefactFlow API, exchanging
+#                           its client id and secret for a short-lived access token and
+#                           re-authenticating for as long as it runs
+# The controller never sees the service-account credentials.
+---
+# Referenced by the ApplicationSet's plugin generator. token is resolved by the controller against argocd-secret ($plugin.<name>.token); baseUrl is this plugin's in-cluster Service DNS.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: argocd-generator-plugin
+  namespace: argocd
+data:
+  token: "$plugin.argocd-generator.token"
+  baseUrl: "http://argocd-generator.argocd.svc.cluster.local:4355"
+  requestTimeout: "60"
+---
+# The controller resolves $plugin.* references against argocd-secret by default.
+apiVersion: v1
+kind: Secret
+metadata:
+  name: argocd-secret
+  namespace: argocd
+type: Opaque
+stringData:
+  plugin.argocd-generator.token: "replace-with-a-strong-shared-secret"
+---
+# The ArtefactFlow service account the plugin authenticates as. Requires the sbom:read and environment:read scopes, and team membership granting read access to the relevant groups.
+#
+# The client id is the service account's own id, a UUID: an identifier rather than a credential, but it lives here so both halves stay together.
+apiVersion: v1
+kind: Secret
+metadata:
+  name: argocd-generator-upstream
+  namespace: argocd
+type: Opaque
+stringData:
+  client-id: "replace-with-the-service-account-client-id"
+  client-secret: "replace-with-the-service-account-client-secret"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: argocd-generator
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: argocd-generator
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: argocd-generator
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: argocd-generator
+    spec:
+      containers:
+        - name: argocd-generator
+          image: ghcr.io/artefactflow/argocd-generator:latest
+          args: ["serve", "--addr", ":4355"]
+          ports:
+            - name: http
+              containerPort: 4355
+          env:
+            - name: ARTEFACTFLOW_API_URL
+              value: "https://api.artefactflow.app"
+            - name: ARTEFACTFLOW_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: argocd-generator-upstream
+                  key: client-id
+            - name: ARTEFACTFLOW_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: argocd-generator-upstream
+                  key: client-secret
+            - name: ARGOCD_PLUGIN_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: argocd-secret
+                  key: plugin.argocd-generator.token
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+          resources:
+            requests:
+              cpu: 25m
+              memory: 32Mi
+            limits:
+              cpu: 250m
+              memory: 128Mi
+          securityContext:
+            runAsNonRoot: true
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            seccompProfile:
+              type: RuntimeDefault
+            capabilities:
+              drop: ["ALL"]
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: argocd-generator
+  namespace: argocd
+spec:
+  selector:
+    app.kubernetes.io/name: argocd-generator
+  ports:
+    - name: http
+      port: 4355
+      targetPort: http

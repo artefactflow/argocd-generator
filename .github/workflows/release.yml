@@ -1,0 +1,306 @@
+name: Release
+
+# Build and publish the multi-architecture container image, and the Helm chart
+# that deploys it, to the GitHub Container Registry from a version tag (for
+# example v1.2.3). The newest release also updates the `latest` tag that
+# deploy/plugin.yaml references.
+#
+# Chart and image share the tag: the chart is published at the tag's version
+# with its appVersion set to the same value, so a chart version always names
+# the image it installs. Both drop the tag's leading `v` (v1.2.3 publishes image
+# tag 1.2.3 and chart 1.2.3), because the chart's default image tag is its
+# appVersion. A chart-only fix therefore needs a version bump too.
+#
+# Order matters. The image is pushed by digest only, untagged. It is scanned
+# for every platform, and an image holding a vulnerability on CISA's Known
+# Exploited Vulnerabilities catalogue stops the run there: nothing can pull it
+# by name, and no chart points at it. Only then is it tagged and attested, the
+# chart published, and a GitHub release created with the SBOMs.
+#
+# A tag push does not start this workflow, so an accidental tag cannot publish.
+# Start it by hand and choose the release tag (not a branch) under "Use
+# workflow from".
+on:
+  workflow_dispatch:
+  # push:
+  #   tags: ["v*"]
+
+permissions:
+  contents: read
+
+env:
+  IMAGE: ghcr.io/${{ github.repository }}
+  PLATFORMS: linux/amd64 linux/arm64
+  # Pinned, Trivy by a checksum recorded here rather than one fetched from the
+  # same release. Keep equal to security.yml; Dependabot does not update them.
+  TRIVY_VERSION: 0.76.1
+  TRIVY_SHA256: c7cbe3137fb8a48a17574bede3dd6beb16742d1e9772929940fc90082c39d9c0
+
+jobs:
+  build-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      digest: ${{ steps.existing.outputs.digest || steps.build.outputs.digest }}
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      # A manual run can be started from a branch, which would publish an image
+      # and chart named after the branch.
+      - name: Require a version tag
+        id: version
+        run: |
+          if [ "$GITHUB_REF_TYPE" != tag ] || ! printf '%s' "$GITHUB_REF_NAME" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$'; then
+            echo "::error::run this workflow from a v-prefixed SemVer tag (for example v1.2.3), not from '$GITHUB_REF_NAME'"
+            exit 1
+          fi
+          echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: docker/setup-qemu-action@v4
+
+      - uses: docker/setup-buildx-action@v4
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # An image version is immutable: a chart of that version installs it, and
+      # someone who pinned it expects the exact image that was checked. A re-run
+      # for the same tag re-uses the published image instead of rebuilding it
+      # from newer base layers.
+      - name: Re-use an existing image for this version
+        id: existing
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          if digest="$(docker buildx imagetools inspect "${IMAGE}:${VERSION}" --format '{{.Manifest.Digest}}' 2>/dev/null)" && [ -n "$digest" ]; then
+            echo "::notice::${IMAGE}:${VERSION} already exists (${digest}); re-using it rather than rebuilding."
+            echo "digest=$digest" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Derive image labels
+        id: meta
+        uses: docker/metadata-action@v6
+        with:
+          images: ${{ env.IMAGE }}
+          tags: type=semver,pattern={{version}}
+
+      - name: Build and push by digest
+        id: build
+        if: steps.existing.outputs.digest == ''
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          outputs: type=image,name=${{ env.IMAGE }},push-by-digest=true,name-canonical=true,push=true
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            VERSION=${{ steps.version.outputs.version }}
+
+  sbom:
+    # Made from the pushed image by digest, one per platform, so the SBOMs and
+    # the scans describe exactly what users will pull, not a rebuild.
+    needs: build-push
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
+    outputs:
+      purl: ${{ steps.scan.outputs.purl }}
+    steps:
+      # The gate script comes from the release tag. A tag cut before the script
+      # existed cannot be released by this workflow; that fails closed.
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Install Trivy
+        run: |
+          curl -sSfL -o "$RUNNER_TEMP/trivy.tar.gz" "https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION}/trivy_${TRIVY_VERSION}_Linux-64bit.tar.gz"
+          echo "${TRIVY_SHA256}  $RUNNER_TEMP/trivy.tar.gz" | sha256sum -c -
+          mkdir -p "$RUNNER_TEMP/bin"
+          tar -xzf "$RUNNER_TEMP/trivy.tar.gz" -C "$RUNNER_TEMP/bin" trivy
+          echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Generate the SBOMs and scan the image
+        id: scan
+        env:
+          VERSION: ${{ needs.build-push.outputs.version }}
+          DIGEST: ${{ needs.build-push.outputs.digest }}
+        run: |
+          for platform in $PLATFORMS; do
+            arch="${platform#linux/}"
+            trivy image --quiet --platform "$platform" --format cyclonedx --output "argocd-generator-${VERSION}-${arch}.cdx.json" "${IMAGE}@${DIGEST}"
+            trivy image --quiet --platform "$platform" --scanners vuln --format json --output "trivy-${arch}.json" "${IMAGE}@${DIGEST}"
+          done
+          echo "purl=pkg:oci/argocd-generator@${DIGEST/:/%3A}?repository_url=${IMAGE}" >> "$GITHUB_OUTPUT"
+
+      # The image is not tagged yet, so failing here leaves nothing pullable by
+      # name, no chart and no release.
+      - name: Check against the Known Exploited Vulnerabilities catalogue
+        run: |
+          status=0
+          for report in trivy-*.json; do
+            echo "Checking $report"
+            .github/scripts/kev-check.sh "$report" || status=1
+          done
+          exit $status
+
+      - name: Keep the SBOMs and scans for the later jobs
+        uses: actions/upload-artifact@v7
+        with:
+          name: sbom
+          path: |
+            *.cdx.json
+            trivy-*.json
+
+  promote:
+    needs: [build-push, sbom]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+      attestations: write
+    steps:
+      - uses: docker/setup-buildx-action@v4
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Tag the checked image
+        env:
+          VERSION: ${{ needs.build-push.outputs.version }}
+          DIGEST: ${{ needs.build-push.outputs.digest }}
+        run: |
+          tags=(-t "${IMAGE}:${VERSION}")
+          case "$VERSION" in
+            *-*)
+              # A pre-release gets only its own exact tag: `latest`, which
+              # deploy/plugin.yaml uses, must stay on the newest full release.
+              ;;
+            *)
+              tags+=(-t "${IMAGE}:${VERSION%.*}" -t "${IMAGE}:${VERSION%%.*}" -t "${IMAGE}:latest")
+              ;;
+          esac
+          docker buildx imagetools create "${tags[@]}" "${IMAGE}@${DIGEST}"
+
+      # Lets users, and the daily integrity check, verify that an image was
+      # built by this workflow: `gh attestation verify oci://<image> --repo
+      # artefactflow/argocd-generator`.
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@v4
+        with:
+          subject-name: ${{ env.IMAGE }}
+          subject-digest: ${{ needs.build-push.outputs.digest }}
+          push-to-registry: true
+
+  publish-chart:
+    # Runs after the image is checked and tagged, so a chart never points at a
+    # tag that does not exist yet, or at an image with an exploited
+    # vulnerability.
+    needs: [build-push, promote]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: azure/setup-helm@v5
+
+      - name: Log in to GHCR
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | helm registry login ghcr.io -u ${{ github.actor }} --password-stdin
+
+      - name: Package and push
+        env:
+          VERSION: ${{ needs.build-push.outputs.version }}
+        run: |
+          helm package charts/argocd-generator --version "$VERSION" --app-version "$VERSION"
+          helm push "argocd-generator-$VERSION.tgz" oci://ghcr.io/${{ github.repository_owner }}/charts
+
+  release:
+    # Its own job, so the write token never shares a workspace with a
+    # third-party action.
+    needs: [build-push, publish-chart]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: sbom
+          path: sbom
+
+      # The SBOMs are attached when the release is created: with immutable
+      # releases enabled, assets cannot be added afterwards.
+      - name: Create the GitHub release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "Release $GITHUB_REF_NAME already exists; attaching the SBOMs if it still accepts them."
+            gh release upload "$GITHUB_REF_NAME" sbom/*.cdx.json --clobber --repo "$GITHUB_REPOSITORY" || echo "::warning::could not attach the SBOMs to the existing release $GITHUB_REF_NAME (an immutable release cannot change). They are in this run's artifacts."
+            exit 0
+          fi
+          prerelease=()
+          case "$GITHUB_REF_NAME" in *-*) prerelease=(--prerelease) ;; esac
+          gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --title "$GITHUB_REF_NAME" --generate-notes "${prerelease[@]}" sbom/*.cdx.json
+
+  artefactflow:
+    # Records the release, its digest and its vulnerabilities in ArtefactFlow,
+    # the same way a customer's pipeline would. Bookkeeping, not a gate: it runs
+    # last, so an ArtefactFlow outage never holds a release back. Skipped until
+    # the repository has the ARTEFACTFLOW_CLIENT_ID variable and the
+    # ARTEFACTFLOW_CLIENT_SECRET secret, and the artefact `argocd-generator`
+    # exists in ArtefactFlow.
+    needs: [build-push, sbom, release]
+    if: ${{ vars.ARTEFACTFLOW_CLIENT_ID != '' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: sbom
+          path: sbom
+
+      # ArtefactFlow keeps one vulnerability set per version, so the amd64 scan
+      # is recorded; both platforms come from the same Dockerfile.
+      # `if-exists: skip` makes a re-run converge instead of failing on the
+      # version it already created.
+      - name: Record the release
+        uses: artefactflow/publish-version-action@v1
+        with:
+          client-id: ${{ vars.ARTEFACTFLOW_CLIENT_ID }}
+          client-secret: ${{ secrets.ARTEFACTFLOW_CLIENT_SECRET }}
+          artefact-name: argocd-generator
+          version: ${{ needs.build-push.outputs.version }}
+          lifecycle: ${{ contains(github.ref_name, '-') && 'beta' || 'release' }}
+          is-default: ${{ !contains(github.ref_name, '-') }}
+          hash: ${{ needs.build-push.outputs.digest }}
+          purl: ${{ needs.sbom.outputs.purl }}
+          if-exists: skip
+          upload-vulnerabilities: true
+          vulnerabilities-file: sbom/trivy-amd64.json

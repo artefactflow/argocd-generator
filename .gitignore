@@ -1,0 +1,7 @@
+# Built binaries
+/argocd-gen
+/dist/
+
+# Local env / secrets
+*.env
+.env

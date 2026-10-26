@@ -1,0 +1,15 @@
+{{/*
+Referenced by each ApplicationSet's plugin generator. The controller resolves
+`token` against a secret and calls `baseUrl` on every reconcile.
+*/}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "argocd-generator.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "argocd-generator.labels" . | nindent 4 }}
+data:
+  token: {{ include "argocd-generator.pluginTokenRef" . | quote }}
+  baseUrl: {{ printf "http://%s.%s.svc.cluster.local:%v" (include "argocd-generator.fullname" .) .Release.Namespace .Values.service.port | quote }}
+  requestTimeout: {{ .Values.plugin.requestTimeout | quote }}

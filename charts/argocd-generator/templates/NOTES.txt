@@ -1,0 +1,33 @@
+argocd-generator {{ .Chart.AppVersion }} installed as {{ include "argocd-generator.fullname" . }} in namespace {{ .Release.Namespace }}.
+
+Plugin generators are disabled in Argo CD by default. If you have not enabled
+them yet, nothing will call this plugin:
+
+  kubectl patch configmap argocd-cmd-params-cm -n argocd --type merge \
+    -p '{"data":{"applicationsetcontroller.enable.plugin":"true"}}'
+  kubectl rollout restart deploy/argocd-applicationset-controller -n argocd
+
+The chart does not manage that ConfigMap: it belongs to your Argo CD install.
+
+{{ if .Values.applicationSets -}}
+ApplicationSets created:
+{{- range .Values.applicationSets }}
+{{- if ne .enabled false }}
+  - {{ .name }} (environment: {{ .environment }})
+{{- end }}
+{{- end }}
+
+Watch the first reconcile:
+
+  kubectl get applicationset -n {{ .Release.Namespace }} -w
+  kubectl logs -n {{ .Release.Namespace }} deploy/{{ include "argocd-generator.fullname" . }}
+{{- else -}}
+No ApplicationSets were created (applicationSets is empty). The plugin is
+running; point an ApplicationSet at ConfigMap {{ include "argocd-generator.fullname" . }} to use it.
+{{- end }}
+
+{{ if and .Values.artefactflow.clientSecret (not .Values.artefactflow.existingSecret) -}}
+WARNING: artefactflow.clientSecret was supplied inline. It is now stored in the
+release secret and readable via `helm get values`. Prefer
+artefactflow.existingSecret unless your values file is itself encrypted.
+{{- end }}

@@ -1,0 +1,84 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+
+      - name: Verify formatting
+        run: |
+          unformatted="$(gofmt -l .)"
+          if [ -n "$unformatted" ]; then
+            echo "These files are not gofmt-clean:"
+            echo "$unformatted"
+            exit 1
+          fi
+
+      - name: Vet
+        run: go vet ./...
+
+      - name: Build
+        run: go build ./...
+
+      - name: Test
+        run: go test -race ./...
+
+  chart:
+    # Lint the Helm chart and confirm it still renders under the token
+    # combinations users actually install with.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: azure/setup-helm@v5
+
+      - name: Lint
+        run: helm lint charts/argocd-generator --set artefactflow.clientId=0199cffa-e497-7ef0-b9c5-7babd3c0e9fc --set artefactflow.clientSecret=s --set plugin.token=p
+
+      - name: Render with inline tokens
+        run: helm template ag charts/argocd-generator -n argocd --set artefactflow.clientId=0199cffa-e497-7ef0-b9c5-7babd3c0e9fc --set artefactflow.clientSecret=s --set plugin.token=p > /dev/null
+
+      - name: Render with existing secrets
+        run: |
+          helm template ag charts/argocd-generator -n argocd \
+            --set artefactflow.clientId=0199cffa-e497-7ef0-b9c5-7babd3c0e9fc \
+            --set artefactflow.existingSecret=upstream \
+            --set plugin.existingSecret=argocd-secret \
+            --set plugin.existingSecretKey=plugin.argocd-generator.token \
+            --set plugin.tokenRef='$plugin.argocd-generator.token' > /dev/null
+
+      - name: Reject a chart with no credentials configured
+        run: |
+          if helm template ag charts/argocd-generator -n argocd > /dev/null 2>&1; then
+            echo "expected the chart to fail without service-account credentials"
+            exit 1
+          fi
+
+  image:
+    # Validate that the container image still builds. Does not push.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: docker/setup-buildx-action@v4
+
+      - name: Build image (no push)
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          push: false
+          load: true
+          tags: argocd-generator:ci

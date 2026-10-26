@@ -1,0 +1,6 @@
+# Blank issues stay enabled: this repository has no issue forms, so disabling them would leave no way to open an issue at all.
+blank_issues_enabled: true
+contact_links:
+  - name: Report a security vulnerability
+    url: https://github.com/artefactflow/argocd-generator/security/advisories/new
+    about: Report privately rather than in a public issue. See SECURITY.md.

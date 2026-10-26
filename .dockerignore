@@ -1,0 +1,7 @@
+# Keep the build context minimal and deterministic.
+.git
+.github
+deploy
+docs
+*.md
+example.sbomversion.json
