@@ -13,7 +13,7 @@ If the vulnerability is being exploited right now, or you believe a release, ima
 
 Include what you did, what happened, and what you expected. A minimal reproduction is worth more than anything else. You will get an acknowledgement, and we will keep you updated as the report is triaged and fixed. Please give us a chance to ship a fix before disclosing publicly.
 
-Our [Vulnerability Disclosure Policy](https://www.artefactflow.com/legal) covers this tool: what is in scope, what we commit to, and the safe harbour for good-faith research. Test against your own installation only, never against a cluster that is not yours.
+Our [Vulnerability Disclosure Policy](https://www.artefactflow.com/legal/vulnerability-disclosure-policy/) covers this tool: what is in scope, what we commit to, and the safe harbour for good-faith research. Test against your own installation only, never against a cluster that is not yours.
 
 ## Security advisories
 
