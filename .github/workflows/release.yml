@@ -17,13 +17,21 @@ name: Release
 # by name, and no chart points at it. Only then is it tagged and attested, the
 # chart published, and a GitHub release created with the SBOMs.
 #
-# A tag push does not start this workflow, so an accidental tag cannot publish.
-# Start it by hand and choose the release tag (not a branch) under "Use
-# workflow from".
+# Pushing a release tag (v1.2.3, or a pre-release such as v1.2.3-rc.1) starts
+# this workflow. To re-run a release, start it by hand and choose the tag (not
+# a branch) under "Use workflow from".
 on:
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+'
+      - 'v[0-9]+.[0-9]+.[0-9]+-*'
   workflow_dispatch:
-  # push:
-  #   tags: ["v*"]
+
+# A push and a manual re-run of the same tag queue behind each other instead
+# of publishing side by side.
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
 
 permissions:
   contents: read

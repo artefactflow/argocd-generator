@@ -51,4 +51,4 @@ docker build .
 
 ## Releasing
 
-Releases are cut by maintainers by running the `Release` workflow by hand against a version tag such as `v1.2.3` (choose the tag, not a branch, under "Use workflow from"). It re-runs the tests, builds the multi-architecture image and scans it, and only then tags and attests the image, publishes the Helm chart to `oci://ghcr.io/artefactflow/charts` at the same version, and creates the GitHub release with the image SBOMs attached.
+Releases are cut by maintainers by pushing a version tag such as `v1.2.3`, which starts the `Release` workflow. To re-run a release, start the workflow by hand and choose the tag, not a branch, under "Use workflow from". The workflow re-runs the tests, builds the multi-architecture image and scans it, and only then tags and attests the image, publishes the Helm chart to `oci://ghcr.io/artefactflow/charts` at the same version, and creates the GitHub release with the image SBOMs attached.
