@@ -1,0 +1,7 @@
+# Artifact Hub repository metadata for the Helm chart at
+# oci://ghcr.io/artefactflow/charts/argocd-generator.
+#
+# Artifact Hub reads this file from the same OCI repository as the chart,
+# under the tag `artifacthub.io`, which .github/workflows/artifacthub.yml
+# pushes. A matching repositoryID marks the listing as a verified publisher.
+repositoryID: 3eb8306a-1a4d-4f77-bc62-48f4f4827247

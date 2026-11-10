@@ -10,13 +10,26 @@ version: 0.1.0
 appVersion: "latest"
 
 home: https://github.com/artefactflow/argocd-generator
+icon: https://www.artefactflow.com/icon-512.png
 sources:
   - https://github.com/artefactflow/argocd-generator
+maintainers:
+  - name: ArtefactFlow
+    url: https://www.artefactflow.com
 keywords:
   - argocd
   - applicationset
   - gitops
   - sbom
   - artefactflow
+# Read by Artifact Hub (https://artifacthub.io/docs/topics/annotations/helm/).
+# It only sees them in a newly published chart version: a version already
+# indexed is never re-read.
 annotations:
   artifacthub.io/category: integration-delivery
+  artifacthub.io/license: Apache-2.0
+  artifacthub.io/links: |
+    - name: Documentation
+      url: https://docs.artefactflow.com/integrations/argocd/
+    - name: ArtefactFlow
+      url: https://www.artefactflow.com
