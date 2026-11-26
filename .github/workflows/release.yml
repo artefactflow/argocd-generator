@@ -294,6 +294,19 @@ jobs:
           name: sbom
           path: sbom
 
+      # The build time is the image's own org.opencontainers.image.created
+      # label, written when it was built. A re-run re-uses the published image,
+      # so it records the original build time rather than the re-run's. If the
+      # label cannot be read, the version is recorded without one.
+      - name: Read when the image was built
+        id: built
+        env:
+          DIGEST: ${{ needs.build-push.outputs.digest }}
+        run: |
+          created="$(docker buildx imagetools inspect "${IMAGE}@${DIGEST}" --format '{{json .Image}}' \
+            | jq -r 'if has("config") then .config.Labels["org.opencontainers.image.created"] else ([.[].config.Labels["org.opencontainers.image.created"]] | first) end // empty')" || created=""
+          echo "timestamp=${created}" >> "$GITHUB_OUTPUT"
+
       # ArtefactFlow keeps one vulnerability set per version, so the amd64 scan
       # is recorded; both platforms come from the same Dockerfile.
       # `if-exists: skip` makes a re-run converge instead of failing on the
@@ -308,6 +321,7 @@ jobs:
           lifecycle: ${{ contains(github.ref_name, '-') && 'beta' || 'release' }}
           is-default: ${{ !contains(github.ref_name, '-') }}
           hash: ${{ needs.build-push.outputs.digest }}
+          build-timestamp: ${{ steps.built.outputs.timestamp }}
           purl: ${{ needs.sbom.outputs.purl }}
           if-exists: skip
           upload-vulnerabilities: true
