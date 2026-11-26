@@ -4,14 +4,11 @@
 
 Please do not open a public issue for a security problem.
 
-Report it privately, in either of two ways:
-
-- Through GitHub's private vulnerability reporting: open the **Security** tab of this repository and choose **Report a vulnerability**. That opens a private channel visible only to maintainers.
-- By email to [security@artefactflow.com](mailto:security@artefactflow.com).
+Report it privately on our disclosure page: <https://www.artefactflow.app/disclosure/5nuztnrqq25h33a4n2xps4wgfpqhukva>. You do not need an account. Name this repository as the product and give the version you tested. If you cannot use the form, email [security@artefactflow.com](mailto:security@artefactflow.com) instead.
 
 If the vulnerability is being exploited right now, or you believe a release, image or chart of this tool was not published by us, email us and begin the subject with `P1`. That reaches us at any hour. Please use it only for that.
 
-Include what you did, what happened, and what you expected. A minimal reproduction is worth more than anything else. You will get an acknowledgement, and we will keep you updated as the report is triaged and fixed. Please give us a chance to ship a fix before disclosing publicly.
+Include what you did, what happened, and what you expected. A minimal reproduction is worth more than anything else. The form gives you a reference and a follow-up token straight away. Keep both: they are how you check where your report stands, and we cannot send them again. Leave an email address if you want us to keep you updated as the report is triaged and fixed. Please give us a chance to ship a fix before disclosing publicly.
 
 Our [Vulnerability Disclosure Policy](https://www.artefactflow.com/legal/vulnerability-disclosure-policy/) covers this tool: what is in scope, what we commit to, and the safe harbour for good-faith research. Test against your own installation only, never against a cluster that is not yours.
 
